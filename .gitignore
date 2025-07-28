@@ -1,0 +1,5 @@
+# Arquivos de log e temporários
+*.log
+*.swp
+*.bak
+/tmp/
