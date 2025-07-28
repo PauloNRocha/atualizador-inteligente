@@ -67,7 +67,7 @@ while read -r line; do
     new_ver=$(echo "$line" | awk '{print $2}')
     # Versão agnóstica de idioma: procura pelo padrão [*: versão]
     current_ver=$(echo "$line" | awk '{sub(/.*\[.*: /,""); sub(/].*/,""); print}')
-    echo -e "- ${pkg_name} ${GREEN}(${current_ver})${NC} ${BLUE}>${NC} ${GREEN}(${new_ver})${NC}"
+    echo -e "- ${pkg_name} ${GREEN}(${current_ver})${NC} ${BLUE}->${NC} ${GREEN}(${new_ver})${NC}"
 done <<< "$upgradable_packages"
 
 echo
