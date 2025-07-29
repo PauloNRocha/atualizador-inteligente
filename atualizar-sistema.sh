@@ -89,10 +89,10 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get upgrade -y > /dev/null
 
 echo -e "${BLUE}# Removendo pacotes desnecessários...${NC}"
-apt-get autoremove -y -qq
+apt-get autoremove -y -qq > /dev/null
 
 echo -e "${BLUE}# Limpando o cache de pacotes...${NC}"
-apt-get autoclean -y -qq
+apt-get autoclean -y -qq > /dev/null
 
 echo
 echo -e "${YELLOW}----------------------------------------------------${NC}"
