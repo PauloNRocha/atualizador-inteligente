@@ -46,7 +46,7 @@ fi
 
 # --- Lógica Principal ---
 echo -e "${BLUE}# Atualizando a lista de pacotes...${NC}"
-apt-get update -qq
+apt-get update -qq 2> /dev/null
 
 echo -e "${BLUE}# Verificando pacotes que podem ser atualizados...${NC}"
 upgradable_packages=$(apt list --upgradable 2>/dev/null | tail -n +2)
