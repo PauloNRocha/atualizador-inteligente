@@ -27,9 +27,12 @@ if [[ "$1" == "--interactive" ]]; then
   interactive_mode=true
 fi
 
+SCRIPT_VERSION="1.1.0"
+
 # --- Início da Execução ---
+echo -e "${BLUE}# Atualizador Inteligente v${SCRIPT_VERSION}${NC}"
+echo -e "${BLUE}# Desenvolvido por: Paulo Rocha | Copiloto: IA Gemini${NC}"
 echo -e "${BLUE}# Início da execução: $(date '+%d/%m/%Y %H:%M:%S')${NC}"
-echo -e "${BLUE}# Script desenvolvido por Paulo Rocha + IA${NC}"
 
 # --- Verificações Iniciais ---
 # 1. Verifica se o script está sendo executado como root
@@ -44,9 +47,22 @@ if ! command -v apt-get &> /dev/null; then
     exit 1
 fi
 
+# 3. Verifica se há conexão com a internet
+if ! ping -c 1 8.8.8.8 &> /dev/null; then
+    echo -e "${RED}ERRO: Sem conexão com a internet.${NC}"
+    echo -e "${YELLOW}Não é possível continuar. Verifique sua conexão de rede.${NC}"
+    exit 1
+fi
+
 # --- Lógica Principal ---
 echo -e "${BLUE}# Atualizando a lista de pacotes...${NC}"
-apt-get update -qq 2> /dev/null
+if ! apt-get update -qq 2>/dev/null; then
+    echo -e "${RED}ERRO: Falha ao atualizar a lista de pacotes.${NC}"
+    echo -e "${YELLOW}Isso pode ocorrer por problemas de rede ou repositórios configurados incorretamente."
+    echo -e "Verifique sua conexão com a internet e o arquivo '/etc/apt/sources.list'."
+    echo -e "Em sistemas descontinuados, os repositórios podem precisar ser atualizados para 'old-releases.ubuntu.com'.${NC}"
+    exit 1
+fi
 
 echo -e "${BLUE}# Verificando pacotes que podem ser atualizados...${NC}"
 upgradable_packages=$(apt list --upgradable 2>/dev/null | tail -n +2)

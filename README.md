@@ -1,23 +1,28 @@
-# Script de Atualização de Pacotes no Debian/Ubuntu
+# Atualizador Inteligente para Debian/Ubuntu
 
-## 📌 Objetivo
+![Versão](https://img.shields.io/badge/version-v1.1.0-blue.svg)
+![Licença](https://img.shields.io/badge/license-MIT-green.svg)
 
-Este script realiza uma atualização completa e segura do sistema. Foi projetado para ser robusto, com uma saída visualmente clara e colorida.
-
-**Principais Características:**
-1.  **Compatibilidade de Idioma**: Funciona em sistemas Debian/Ubuntu configurados em qualquer idioma (inglês, português, etc.).
-2.  **Robusto e Seguro**: Possui tratamento de erros que interrompe a execução em caso de falha e verifica se o sistema é compatível.
-3.  **Saída Detalhada**: Exibe a lista de pacotes a serem atualizados, mostrando a transição de `versão_antiga -> versão_nova`.
-4.  **Modo Duplo**: Executa automaticamente por padrão (ideal para `cron`) e oferece um modo interativo (`--interactive`) para revisão manual.
-5.  **Relatório Final**: Apresenta um resumo claro dos pacotes que foram efetivamente atualizados.
+Um script de shell robusto e inteligente para automatizar o processo de atualização de sistemas baseados em Debian (como Ubuntu), com foco em segurança, clareza e automação.
 
 ---
 
-## 🧰 Requisitos
+## ✨ Principais Funcionalidades
 
--   Distribuição baseada em Debian (Debian, Ubuntu, etc.).
--   Acesso `root` (ou uso de `sudo`).
--   Um terminal que suporte cores ANSI.
+-   **Ciclo Completo de Atualização**: Executa `update`, `upgrade`, `autoremove` e `autoclean` em um único comando.
+-   **Verificação de Conectividade**: Testa a conexão com a internet antes de iniciar para evitar erros de rede.
+-   **Seguro por Padrão**:
+    -   Verifica se o script é executado com privilégios `root`.
+    -   Confirma se o sistema é compatível com `apt`.
+    -   Interrompe a execução imediatamente em caso de qualquer erro (`set -e`).
+-   **Modo Duplo de Execução**:
+    -   **Automático (padrão)**: Perfeito para agendamentos `cron`, executando sem necessidade de intervenção.
+    -   **Interativo (`--interactive`)**: Permite revisar a lista de pacotes e confirmar a atualização manualmente.
+-   **Relatórios Claros e Inteligentes**:
+    -   Exibe uma lista detalhada dos pacotes a serem atualizados, mostrando a mudança de versão (`antiga -> nova`).
+    -   Apresenta um resumo final com os pacotes que foram efetivamente alterados, lendo diretamente dos logs do `apt`.
+-   **Compatibilidade Universal**: Funciona em sistemas Debian/Ubuntu, independentemente do idioma configurado.
+-   **Saída Limpa**: Utiliza cores para facilitar a leitura e suprime logs desnecessários para uma visualização clara do processo.
 
 ---
 
@@ -25,16 +30,14 @@ Este script realiza uma atualização completa e segura do sistema. Foi projetad
 
 ### 1. Dê permissão de execução
 
-Se ainda não o fez, torne o script executável:
-
+Torne o script executável com o seguinte comando:
 ```bash
-chmod +x /caminho_para_script/atualizar-sistema.sh
+chmod +x atualizar-sistema.sh
 ```
 
-### 2. Execução Automática (Padrão)
+### 2. Execução Padrão (Automática)
 
-Para rodar o script de forma direta, sem interrupções. Este é o modo ideal para agendamentos `cron` e outras automações.
-
+Para rodar o script de forma direta, sem interrupções. Este é o modo ideal para automações.
 ```bash
 sudo ./atualizar-sistema.sh
 ```
@@ -42,46 +45,44 @@ sudo ./atualizar-sistema.sh
 ### 3. Execução Interativa
 
 Para revisar os pacotes e confirmar a atualização manualmente, use a flag `--interactive`:
-
 ```bash
 sudo ./atualizar-sistema.sh --interactive
 ```
-O script irá listar os pacotes e aguardar sua confirmação antes de prosseguir.
+O script irá listar os pacotes e aguardar sua confirmação (`s` ou `S`) antes de prosseguir.
 
 ---
 
-## ⏰ Como Agendar no `cron`
+## ⏰ Agendando com Cron
 
-Para agendar a execução automática (por exemplo, toda segunda-feira às 3h da manhã), edite o `crontab` do root:
+Para manter seu sistema atualizado automaticamente (por exemplo, toda segunda-feira às 3h da manhã), edite o `crontab` do usuário `root`.
 
-```bash
-sudo crontab -e
-```
+1.  Abra o crontab:
+    ```bash
+    sudo crontab -e
+    ```
 
-Adicione a seguinte linha. **Não é necessário usar nenhuma flag**, pois o modo automático é o padrão.
+2.  Adicione a seguinte linha, certificando-se de usar o caminho absoluto para o script:
+    ```cron
+    # Executa o script de atualização toda segunda-feira às 3h da manhã
+    0 3 * * 1 /caminho/completo/para/atualizar-sistema.sh >> /var/log/atualizacoes-sistema.log 2>&1
+    ```
+    Isso executará o script e salvará um log de sua saída no arquivo `/var/log/atualizacoes-sistema.log`.
 
-```cron
-0 3 * * 1 /caminho/completo/para/atualizar-sistema.sh >> /var/log/atualizacoes-sistema.log 2>&1
-```
 ---
 
 ## 🧪 Exemplo de Saída
 
-A saída do script utiliza cores para facilitar a leitura:
--   **Azul**: Informações de execução e o símbolo `>`.
--   **Amarelo**: Títulos.
--   **Verde**: Mensagens de sucesso, versões e o resumo final.
--   **Vermelho**: Mensagens de erro.
-
 ```bash
-# Início da execução: 27/07/2025 18:00:00
+# Atualizador Inteligente v1.1.0
+# Desenvolvido por: Paulo Rocha | Copiloto: IA Gemini
+# Início da execução: 06/08/2025 16:30:00
 # Atualizando a lista de pacotes...
 # Verificando pacotes que podem ser atualizados...
 
 # Os seguintes pacotes serão atualizados:
 
-- sudo (1.9.13p3-1+deb12u1) -> (1.9.13p3-1+deb12u2)
-- ca-certificates (20230311) -> (20230311+deb12u1)
+- openssl (3.0.16-1~deb12u1) -> (3.0.17-1~deb12u1)
+- libssl3 (3.0.16-1~deb12u1) -> (3.0.17-1~deb12u1)
 
 # Iniciando atualização.
 
@@ -92,10 +93,15 @@ A saída do script utiliza cores para facilitar a leitura:
 ----------------------------------------------------
 # Resumo do que foi efetivamente atualizado:
 ----------------------------------------------------
-- sudo (1.9.13p3-1+deb12u1 -> 1.9.13p3-1+deb12u2)
-- ca-certificates (20230311 -> 20230311+deb12u1)
+- openssl:amd64 (3.0.16-1~deb12u1 -> 3.0.17-1~deb12u1)
+- libssl3:amd64 (3.0.16-1~deb12u1 -> 3.0.17-1~deb12u1)
 
 # Atualização e limpeza concluídas com sucesso!
-# Script desenvolvido por Paulo Rocha
-# Fim da execução: 27/07/2025 18:01:15
+# Fim da execução: 06/08/2025 16:31:15
 ```
+
+---
+
+## 📜 Licença
+
+Este projeto é distribuído sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
