@@ -27,7 +27,7 @@ if [[ "$1" == "--interactive" ]]; then
   interactive_mode=true
 fi
 
-SCRIPT_VERSION="1.1.0"
+SCRIPT_VERSION="1.2.0"
 
 # --- Início da Execução ---
 echo -e "${BLUE}# Atualizador Inteligente v${SCRIPT_VERSION}${NC}"
@@ -100,9 +100,18 @@ fi
 # --- Execução da Atualização ---
 echo -e "${GREEN}# Iniciando atualização.${NC}"
 echo
-echo -e "${BLUE}# Instalando atualizações... (Isso pode levar alguns minutos)${NC}"
-export DEBIAN_FRONTEND=noninteractive
-apt-get upgrade -y > /dev/null
+
+# Define o modo de front-end do apt e executa a atualização
+if [ "$interactive_mode" = false ]; then
+    # Modo automático: sem perguntas, sem output.
+    echo -e "${BLUE}# Instalando atualizações... (Isso pode levar alguns minutos)${NC}"
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get upgrade -y > /dev/null
+else
+    # Modo interativo: permite perguntas e mostra o output do apt.
+    echo -e "${YELLOW}# O modo interativo está ativo. O apt pode solicitar sua confirmação.${NC}"
+    apt-get upgrade -y
+fi
 
 echo -e "${BLUE}# Removendo pacotes desnecessários...${NC}"
 apt-get autoremove -y -qq > /dev/null
