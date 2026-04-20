@@ -43,6 +43,10 @@ sudo ./atualizar-sistema.sh
 
 Nesse modo, o script exporta `DEBIAN_FRONTEND=noninteractive` e executa `apt-get upgrade -y`.
 
+Quando a execução acontece em um terminal interativo, o script exibe um indicador visual simples durante a etapa de upgrade para deixar claro que o processo continua em andamento.
+
+Quando a execução acontece por `systemd timer` ou `cron`, esse indicador não é exibido, evitando ruído desnecessário em logs.
+
 ### Modo interativo
 
 Indicado para revisão manual antes da atualização.

@@ -31,8 +31,39 @@ Opções:
 EOF
 }
 
+function run_quiet_command_with_spinner {
+  local message="$1"
+  shift
+  local spinner_chars=('|' '/' '-')
+  local spinner_index=0
+  local pid
+  local spinner_char
+
+  "$@" > /dev/null 2>&1 &
+  pid=$!
+
+  while kill -0 "$pid" 2>/dev/null; do
+    spinner_char="${spinner_chars[spinner_index % ${#spinner_chars[@]}]}"
+    printf "\r${BLUE}%s %s${NC}" "$message" "$spinner_char"
+    ((spinner_index += 1))
+    sleep 0.2
+  done
+
+  wait "$pid"
+  local exit_code=$?
+
+  printf "\r${BLUE}%s concluído.${NC}%*s\n" "$message" 20 ""
+  return "$exit_code"
+}
+
 # --- Processamento de Argumentos ---
 interactive_mode=false
+stdout_is_tty=false
+
+if [ -t 1 ]; then
+  stdout_is_tty=true
+fi
+
 case "${1:-}" in
   --interactive)
     interactive_mode=true
@@ -119,10 +150,14 @@ echo
 
 # Define o modo de front-end do apt e executa a atualização
 if [ "$interactive_mode" = false ]; then
-    # Modo automático: sem perguntas, sem output.
+    # Modo automático: sem perguntas. Em terminal interativo, mostra um spinner simples.
     echo -e "${BLUE}# Instalando atualizações... (Isso pode levar alguns minutos)${NC}"
     export DEBIAN_FRONTEND=noninteractive
-    apt-get upgrade -y > /dev/null
+    if [ "$stdout_is_tty" = true ]; then
+        run_quiet_command_with_spinner "# Instalando atualizações..." apt-get upgrade -y
+    else
+        apt-get upgrade -y > /dev/null
+    fi
 else
     # Modo interativo: permite perguntas e mostra o output do apt.
     echo -e "${YELLOW}# O modo interativo está ativo. O apt-get pode solicitar sua confirmação.${NC}"
