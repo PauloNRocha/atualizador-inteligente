@@ -19,15 +19,38 @@ function cleanup_on_error {
 trap 'cleanup_on_error $LINENO' ERR
 
 # Garante que o script pare imediatamente se qualquer comando falhar
-set -e
+set -Eeuo pipefail
+
+function show_usage {
+  cat <<'EOF'
+Uso: ./atualizar-sistema.sh [--interactive]
+
+Opções:
+  --interactive  Exibe a lista de pacotes e deixa o apt-get pedir confirmação.
+  --help         Exibe esta ajuda.
+EOF
+}
 
 # --- Processamento de Argumentos ---
 interactive_mode=false
-if [[ "$1" == "--interactive" ]]; then
-  interactive_mode=true
-fi
+case "${1:-}" in
+  --interactive)
+    interactive_mode=true
+    ;;
+  --help)
+    show_usage
+    exit 0
+    ;;
+  "")
+    ;;
+  *)
+    echo -e "${RED}ERRO: Argumento inválido: ${1}${NC}" >&2
+    show_usage
+    exit 1
+    ;;
+esac
 
-SCRIPT_VERSION="1.2.0"
+SCRIPT_VERSION="1.3.0"
 
 # --- Início da Execução ---
 echo -e "${BLUE}# Atualizador Inteligente v${SCRIPT_VERSION}${NC}"
@@ -47,25 +70,19 @@ if ! command -v apt-get &> /dev/null; then
     exit 1
 fi
 
-# 3. Verifica se há conexão com a internet
-if ! ping -c 1 8.8.8.8 &> /dev/null; then
-    echo -e "${RED}ERRO: Sem conexão com a internet.${NC}"
-    echo -e "${YELLOW}Não é possível continuar. Verifique sua conexão de rede.${NC}"
-    exit 1
-fi
-
 # --- Lógica Principal ---
 echo -e "${BLUE}# Atualizando a lista de pacotes...${NC}"
 if ! apt-get update -qq 2>/dev/null; then
     echo -e "${RED}ERRO: Falha ao atualizar a lista de pacotes.${NC}"
-    echo -e "${YELLOW}Isso pode ocorrer por problemas de rede ou repositórios configurados incorretamente."
+    echo -e "${YELLOW}Isso pode ocorrer por problemas de rede, DNS, proxy, firewall ou repositórios configurados incorretamente."
     echo -e "Verifique sua conexão com a internet e o arquivo '/etc/apt/sources.list'."
     echo -e "Em sistemas descontinuados, os repositórios podem estar desativados.${NC}"
     exit 1
 fi
 
 echo -e "${BLUE}# Verificando pacotes que podem ser atualizados...${NC}"
-upgradable_packages=$(apt list --upgradable 2>/dev/null | tail -n +2)
+# Usa a simulação do apt-get para obter uma prévia mais previsível para automação.
+upgradable_packages=$(apt-get -s upgrade 2>/dev/null | awk '/^Inst /')
 
 if [ -z "$upgradable_packages" ]; then
     echo -e "${GREEN}# Seu sistema já está atualizado. Nenhum pacote para atualizar.${NC}"
@@ -77,12 +94,11 @@ echo
 echo -e "${YELLOW}# Os seguintes pacotes serão atualizados:${NC}"
 echo
 
-# Processa e exibe a lista detalhada de pacotes com versões (agnóstico de idioma)
-while read -r line; do
-    pkg_name=$(echo "$line" | awk -F'/' '{print $1}')
-    new_ver=$(echo "$line" | awk '{print $2}')
-    # Versão agnóstica de idioma: procura pelo padrão [*: versão]
-    current_ver=$(echo "$line" | awk '{sub(/.*\[.*: /,""); sub(/].*/,""); print}')
+# Processa e exibe a lista detalhada de pacotes com versões a partir das linhas "Inst".
+while IFS= read -r line; do
+    pkg_name=$(awk '{print $2}' <<< "$line")
+    current_ver=$(sed -n 's/^Inst [^ ]* \[\([^]]*\)\].*/\1/p' <<< "$line")
+    new_ver=$(sed -n 's/^Inst [^ ]* \[[^]]*\] (\([^ )]*\).*/\1/p' <<< "$line")
     echo -e "- ${pkg_name} ${GREEN}(${current_ver})${NC} ${BLUE}->${NC} ${GREEN}(${new_ver})${NC}"
 done <<< "$upgradable_packages"
 
@@ -109,8 +125,8 @@ if [ "$interactive_mode" = false ]; then
     apt-get upgrade -y > /dev/null
 else
     # Modo interativo: permite perguntas e mostra o output do apt.
-    echo -e "${YELLOW}# O modo interativo está ativo. O apt pode solicitar sua confirmação.${NC}"
-    apt-get upgrade -y
+    echo -e "${YELLOW}# O modo interativo está ativo. O apt-get pode solicitar sua confirmação.${NC}"
+    apt-get upgrade
 fi
 
 echo -e "${BLUE}# Removendo pacotes desnecessários...${NC}"
@@ -124,8 +140,8 @@ echo -e "${YELLOW}----------------------------------------------------${NC}"
 echo -e "${YELLOW}# Resumo do que foi efetivamente atualizado:${NC}"
 echo -e "${YELLOW}----------------------------------------------------${NC}"
 
-# Usa awk para encontrar o último bloco de 'upgrade' e sed para formatar a saída
-last_upgrade_log=$(awk '/^Start-Date/ { record = "" } { record = record $0 ORS } /^End-Date/ { if (record ~ /Commandline: apt-get upgrade -y/) last_upgrade = record } END { printf "%s", last_upgrade }' /var/log/apt/history.log)
+# Usa awk para encontrar o último bloco de upgrade executado pelo script e sed para formatar a saída
+last_upgrade_log=$(awk '/^Start-Date/ { record = "" } { record = record $0 ORS } /^End-Date/ { if (record ~ /Commandline: apt-get upgrade( |$)/) last_upgrade = record } END { printf "%s", last_upgrade }' /var/log/apt/history.log)
 
 upgraded_list=$(echo "$last_upgrade_log" | grep "Upgrade:" | sed 's/Upgrade: //' | sed 's/), /)\n/g' | sed 's/, / -> /' | sed 's/^/- /')
 

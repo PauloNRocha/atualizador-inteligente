@@ -1,80 +1,163 @@
 # Atualizador Inteligente para Debian/Ubuntu
 
-![Versão](https://img.shields.io/badge/version-v1.1.0-blue.svg)
+![Versão](https://img.shields.io/badge/version-v1.3.0-blue.svg)
 ![Licença](https://img.shields.io/badge/license-MIT-green.svg)
 
-Um script de shell robusto e inteligente para automatizar o processo de atualização de sistemas baseados em Debian (como Ubuntu), com foco em segurança, clareza e automação.
+Script em shell para atualização de sistemas Debian e Ubuntu com foco em execução automática, previsibilidade operacional e comportamento compatível com servidores.
 
----
+## Visão Geral
 
-## ✨ Principais Funcionalidades
+O script executa o fluxo `apt-get update`, `apt-get upgrade`, `apt-get autoremove` e `apt-get autoclean` em sequência.
 
--   **Ciclo Completo de Atualização**: Executa `update`, `upgrade`, `autoremove` e `autoclean` em um único comando.
--   **Verificação de Conectividade**: Testa a conexão com a internet antes de iniciar para evitar erros de rede.
--   **Seguro por Padrão**:
-    -   Verifica se o script é executado com privilégios `root`.
-    -   Confirma se o sistema é compatível com `apt`.
-    -   Interrompe a execução imediatamente em caso de qualquer erro (`set -e`).
--   **Modo Duplo de Execução**:
-    -   **Automático (padrão)**: Perfeito para agendamentos `cron`, executando sem necessidade de intervenção.
-    -   **Interativo (`--interactive`)**: Permite revisar a lista de pacotes e confirmar a atualização manualmente.
--   **Relatórios Claros e Inteligentes**:
-    -   Exibe uma lista detalhada dos pacotes a serem atualizados, mostrando a mudança de versão (`antiga -> nova`).
-    -   Apresenta um resumo final com os pacotes que foram efetivamente alterados, lendo diretamente dos logs do `apt`.
--   **Compatibilidade Universal**: Funciona em sistemas Debian/Ubuntu, independentemente do idioma configurado.
--   **Saída Limpa**: Utiliza cores para facilitar a leitura e suprime logs desnecessários para uma visualização clara do processo.
+Ele foi pensado para uso recorrente em servidor, com duas prioridades:
 
----
+- reduzir falhas causadas por validações artificiais de conectividade;
+- manter o comportamento previsível do `apt-get upgrade`, sem migrar para `dist-upgrade` ou `full-upgrade`.
 
-## 📂 Como Usar
+O que o script faz:
 
-### 1. Dê permissão de execução
+- valida execução como `root`;
+- confirma a presença do `apt-get`;
+- tenta atualizar os índices reais do APT;
+- gera uma prévia dos pacotes pendentes com `apt-get -s upgrade`;
+- executa a atualização;
+- remove pacotes obsoletos e limpa o cache;
+- exibe um resumo final com base no histórico do APT.
 
-Torne o script executável com o seguinte comando:
-```bash
-chmod +x atualizar-sistema.sh
-```
+O que o script não faz:
 
-### 2. Execução Padrão (Automática)
+- não executa `dist-upgrade`;
+- não altera repositórios;
+- não gerencia reinicialização do sistema;
+- não instala automaticamente pacotes novos exigidos por mudanças mais complexas de dependência.
 
-Para rodar o script de forma direta, sem interrupções. Este é o modo ideal para automações.
+## Modos de Execução
+
+### Modo automático
+
+Indicado para `systemd timer`, `cron` ou execução manual sem interação.
+
 ```bash
 sudo ./atualizar-sistema.sh
 ```
 
-### 3. Execução Interativa
+Nesse modo, o script exporta `DEBIAN_FRONTEND=noninteractive` e executa `apt-get upgrade -y`.
 
-Para revisar os pacotes e confirmar a atualização manualmente, use a flag `--interactive`:
+### Modo interativo
+
+Indicado para revisão manual antes da atualização.
+
 ```bash
 sudo ./atualizar-sistema.sh --interactive
 ```
-O script irá listar os pacotes e aguardar sua confirmação (`s` ou `S`) antes de prosseguir.
 
----
+Nesse modo, o script:
 
-## ⏰ Agendando com Cron
+- lista os pacotes identificados na simulação;
+- pede uma confirmação inicial;
+- executa `apt-get upgrade` sem `-y`, permitindo interação real com o APT.
 
-Para manter seu sistema atualizado automaticamente (por exemplo, toda segunda-feira às 3h da manhã), edite o `crontab` do usuário `root`.
-
-1.  Abra o crontab:
-    ```bash
-    sudo crontab -e
-    ```
-
-2.  Adicione a seguinte linha, certificando-se de usar o caminho absoluto para o script:
-    ```cron
-    # Executa o script de atualização toda segunda-feira às 3h da manhã
-    0 3 * * 1 /caminho/completo/para/atualizar-sistema.sh >> /var/log/atualizacoes-sistema.log 2>&1
-    ```
-    Isso executará o script e salvará um log de sua saída no arquivo `/var/log/atualizacoes-sistema.log`.
-
----
-
-## 🧪 Exemplo de Saída
+### Ajuda
 
 ```bash
-# Atualizador Inteligente v1.1.0
-# Desenvolvido por: Paulo Rocha | Copiloto: IA Gemini
+./atualizar-sistema.sh --help
+```
+
+## Requisitos
+
+- sistema baseado em Debian ou Ubuntu;
+- `bash`;
+- `apt-get`;
+- privilégios administrativos.
+
+## Agendamento Recomendado com systemd timer
+
+Para ambiente de produção, `systemd timer` é o agendamento recomendado. Ele oferece integração melhor com `systemctl`, `journalctl` e estado de execução do serviço.
+
+### 1. Tornar o script executável
+
+```bash
+chmod +x atualizar-sistema.sh
+```
+
+### 2. Criar a unit de serviço
+
+Crie o arquivo `/etc/systemd/system/atualizador-inteligente.service`:
+
+```ini
+[Unit]
+Description=Atualizador Inteligente para Debian/Ubuntu
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/caminho/completo/para/atualizar-sistema.sh
+```
+
+Substitua `/caminho/completo/para/atualizar-sistema.sh` pelo caminho real do script no servidor.
+
+### 3. Criar o timer
+
+Crie o arquivo `/etc/systemd/system/atualizador-inteligente.timer`:
+
+```ini
+[Unit]
+Description=Executa o Atualizador Inteligente semanalmente
+
+[Timer]
+OnCalendar=Mon *-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+O exemplo acima agenda a execução para toda segunda-feira, às 03:00.
+
+### 4. Recarregar o systemd e habilitar o timer
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now atualizador-inteligente.timer
+```
+
+### 5. Verificar o agendamento
+
+```bash
+sudo systemctl list-timers atualizador-inteligente.timer
+sudo systemctl status atualizador-inteligente.service
+```
+
+### 6. Consultar logs
+
+```bash
+sudo journalctl -u atualizador-inteligente.service
+```
+
+## Agendamento com cron
+
+`cron` continua sendo uma opção válida quando o ambiente já depende desse modelo.
+
+Edite o `crontab` do `root`:
+
+```bash
+sudo crontab -e
+```
+
+Adicione uma entrada com caminho absoluto:
+
+```cron
+0 3 * * 1 /caminho/completo/para/atualizar-sistema.sh >> /var/log/atualizacoes-sistema.log 2>&1
+```
+
+Esse exemplo executa o script toda segunda-feira às 03:00 e grava a saída em `/var/log/atualizacoes-sistema.log`.
+
+## Exemplo de Saída
+
+```bash
+# Atualizador Inteligente v1.3.0
+# Desenvolvido por: Paulo Rocha + IA
 # Início da execução: 06/08/2025 16:30:00
 # Atualizando a lista de pacotes...
 # Verificando pacotes que podem ser atualizados...
@@ -100,8 +183,6 @@ Para manter seu sistema atualizado automaticamente (por exemplo, toda segunda-fe
 # Fim da execução: 06/08/2025 16:31:15
 ```
 
----
-
-## 📜 Licença
+## Licença
 
 Este projeto é distribuído sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
